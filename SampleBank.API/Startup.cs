@@ -1,19 +1,25 @@
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
+using SampleBank.Domain.Models;
+using SampleBank.Domain.Services;
+using SampleBank.Infrastructure;
 
 namespace SampleBank.API
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public IConfiguration Configuration { get; }
+        public IWebHostEnvironment WebHostEnvironment { get; }
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment webHostEnvironment)
         {
             Configuration = configuration;
+            WebHostEnvironment = webHostEnvironment;
         }
-
-        public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -23,6 +29,14 @@ namespace SampleBank.API
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SampleBank", Version = "v1" });
             });
+            services.AddSingleton(typeof(JsonRepository<>));
+            services.AddSingleton<IAccountService, AccountService>();
+            services.Configure<RepositoryOptions>(options =>
+                options.BaseDataFolder = Path.Combine(WebHostEnvironment.ContentRootPath, "data")
+            );
+            services.AddSingleton<IAccountRepository>(provider => 
+                new AccountRepository(repository: provider.GetService<JsonRepository<Account>>())
+            );
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
